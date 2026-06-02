@@ -13,9 +13,9 @@ RECIPES = "http://aispire.example.org/recipes/"
 
 NER_LABEL_TO_KG_TYPE: dict[str, str] = {
     "PERSON": f"{RECIPES}Author",
-    "GPE": f"{RECIPES}Cuisine",
+    "NORP": f"{RECIPES}Cuisine",
     # TODO: extend to cover the remaining NER labels that appear in dev.jsonl.
     # Hint: inspect dev.jsonl and `data/recipes_kg.ttl` to see which KG class
-    # each label should map to. Labels likely needed include PRODUCT, NORP,
+    # each label should map to. Labels likely needed include PRODUCT, GPE,
     # and ORG. Pick the KG class whose instances those NER spans should resolve to.
 }
