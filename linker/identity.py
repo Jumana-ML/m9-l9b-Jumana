@@ -8,7 +8,8 @@ data/recipes_kg.cypher enforces this.
 
 `canonical_id` is fully implemented — do not modify. `merge_entity` has
 one TODO: produce the parameterized Cypher MERGE statement and bound
-parameter dict that the loader uses when it ingests the fixture.
+parameter dict for the (label, name) pair (gated by the Lab 9B
+autograder under Gate 1b).
 """
 import re
 

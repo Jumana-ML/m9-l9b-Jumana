@@ -18,7 +18,7 @@ import pytest
 # conftest.py adds the repo root to sys.path. Import the learner-facing
 # package here so collection-time import failures surface clearly.
 from linker import link, score, candidates, disambiguate, GoldSpan, LinkResult
-from linker.identity import canonical_id
+from linker.identity import canonical_id, merge_entity
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -426,6 +426,86 @@ def test_score_methodology():
     assert abs(m["precision"] - 0.5) < 1e-9, m
     assert abs(m["recall"] - 0.5) < 1e-9, m
     assert abs(m["f1"] - 0.5) < 1e-9, m
+
+
+# ---------------------------------------------------------------------------
+# Gate 8b: score() — wrong-prediction-on-non-NIL-gold doubling
+# ---------------------------------------------------------------------------
+
+def test_score_wrong_prediction_doubles_as_fp_and_fn():
+    """A wrong prediction on a non-NIL gold span must count as BOTH FP and
+    FN on that span (per the triple-stated methodology in answer-key.md
+    §2.4 / grading-rubric.md / lab-spec.md).
+
+    Construction (all spans in doc_id="d1"):
+      span A: gold=author:x   pred=author:x          -> TP
+      span B: gold=ingredient:y pred=ingredient:WRONG -> FP + FN (doubling)
+
+    Per-doc: TP=1, FP=1, FN=1 → precision=0.5, recall=0.5, f1=0.5.
+
+    A buggy implementation that counts wrong-pred as FP only (not FP+FN)
+    would produce TP=1, FP=1, FN=0 → precision=0.5, recall=1.0, f1≈0.67
+    and fail this test. Pairs with Gate 8 (which uses NIL-pred for the
+    FN-only case to keep the same target numerics, leaving the doubling
+    rule untested by that fixture).
+    """
+    gold = [
+        GoldSpan("d1", 0, 4, "X", "author:x",     "Author"),
+        GoldSpan("d1", 5, 9, "Y", "ingredient:y", "Ingredient"),
+    ]
+    pred = [
+        LinkResult("d1", 0, 4, "X", "author:x",         "Author",     "resolved-unique"),
+        LinkResult("d1", 5, 9, "Y", "ingredient:WRONG", "Ingredient", "resolved-unique"),
+    ]
+    m = score(pred, gold)
+    assert abs(m["precision"] - 0.5) < 1e-9, m
+    assert abs(m["recall"] - 0.5) < 1e-9, m
+    assert abs(m["f1"] - 0.5) < 1e-9, m
+
+
+# ---------------------------------------------------------------------------
+# Gate 1b: merge_entity() — Identity-Discipline MERGE template
+# ---------------------------------------------------------------------------
+
+def test_merge_entity_returns_parameterized_merge():
+    """`merge_entity(label, name, extra_props)` returns
+    (cypher_string, params_dict) where:
+      - cypher contains a `MERGE` clause carrying both the domain label
+        and `:Entity` (two labels on the node)
+      - `id` flows through `$id` (never f-string interpolated)
+      - `name` is set on the node
+      - every key in extra_props is set on the node
+      - params dict carries id (== canonical_id(label, name)), name, and
+        the extra_props key/value pairs.
+    """
+    cypher, params = merge_entity("Ingredient", "ginger", {"category": "spice"})
+    assert isinstance(cypher, str) and cypher.strip()
+    # Two labels on the MERGE-d node.
+    assert ":Ingredient" in cypher and ":Entity" in cypher, cypher
+    assert "MERGE" in cypher.upper(), cypher
+    # id must come through the $id parameter — not f-string interpolated.
+    assert "$id" in cypher, cypher
+    assert "ingredient:ginger" not in cypher, (
+        "merge_entity must not bake the canonical id into the cypher string; "
+        "use the $id parameter"
+    )
+    # name on node
+    assert "$name" in cypher, cypher
+    # extra_props key surfaced as parameter
+    assert "$category" in cypher, cypher
+    # params dict
+    assert params.get("id") == "ingredient:ginger", params
+    assert params.get("name") == "ginger", params
+    assert params.get("category") == "spice", params
+
+
+def test_merge_entity_no_extra_props():
+    """merge_entity called with no extra_props still returns a valid
+    parameterized MERGE for the (label, name) pair."""
+    cypher, params = merge_entity("Cuisine", "Sichuan")
+    assert "$id" in cypher and "$name" in cypher, cypher
+    assert params.get("id") == "cuisine:sichuan", params
+    assert params.get("name") == "Sichuan", params
 
 
 # ---------------------------------------------------------------------------
