@@ -35,7 +35,7 @@ NER_LABEL_TO_KG_TYPE: dict[str, set[str]] = {
     "ORG": {"Author"},
     # TODO: extend NER_LABEL_TO_KG_TYPE with at minimum the following NER
     # labels used in the dev/test splits: "GPE", "FOOD", "INGREDIENT",
-    # "DISH", "TECHNIQUE". Refer to data/README.md for the gold-span NER
+    # "TECHNIQUE". Refer to data/README.md for the gold-span NER
     # label distribution and to the §2.1 schema labels (Recipe, Cuisine,
     # Ingredient, Author, Technique).
 }
