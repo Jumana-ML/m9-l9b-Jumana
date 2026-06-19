@@ -33,7 +33,7 @@ def candidates(driver, surface: str) -> list[dict]:
     Then drop the literal "Entity" label from each row's `labels` list
     before returning.
     """
-    # TODO:
+    # 
     # 1. Open a session on `driver`. Run a parameterized Cypher MATCH that
     #    selects every (:Entity) node whose lowercased `name` equals the
     #    lowercased $surface parameter. Pass $surface via session.run's
@@ -41,7 +41,25 @@ def candidates(driver, surface: str) -> list[dict]:
     # 2. For each returned row, build a dict with keys id, name, labels.
     #    Drop the "Entity" label from labels so callers only see domain labels.
     # 3. Return the list (may be empty).
-    raise NotImplementedError(
-        "candidates() is not yet implemented — see the Reading's "
-        "Candidate Generation worked example and the Lab guide."
-    )
+    
+    query = """
+    MATCH (n:Entity)
+    WHERE toLower(n.name) = toLower($surface)
+    RETURN n.id AS id, n.name AS name, labels(n) AS labels
+    """
+    
+    candidate_nodes = []
+    
+    with driver.session() as session:
+        result = session.run(query, surface=surface)
+        for record in result:
+            # استخراج العناوين واستبعاد "Entity"
+            domain_labels = [label for label in record["labels"] if label != "Entity"]
+            
+            candidate_nodes.append({
+                "id": record["id"],
+                "name": record["name"],
+                "labels": domain_labels
+            })
+            
+    return candidate_nodes

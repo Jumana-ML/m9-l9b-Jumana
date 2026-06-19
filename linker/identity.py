@@ -7,7 +7,7 @@ to the same entity. The :Entity uniqueness constraint declared in
 data/recipes_kg.cypher enforces this.
 
 `canonical_id` is fully implemented — do not modify. `merge_entity` has
-one TODO: produce the parameterized Cypher MERGE statement and bound
+one produce the parameterized Cypher MERGE statement and bound
 parameter dict for the (label, name) pair (gated by the Lab 9B
 autograder under Gate 1b).
 """
@@ -53,15 +53,23 @@ def merge_entity(label: str, name: str, extra_props: dict | None = None) -> tupl
     identifier list — do NOT pass property names as parameters, only
     property VALUES. The id MUST come through a parameter ($id).
     """
-    # TODO (Identity Mapping):
+    # (Identity Mapping):
     # 1. Compute the canonical id via canonical_id(label, name).
+    cid = canonical_id(label, name)
+
     # 2. Build the Cypher string with two labels (`:<label>:Entity`),
     #    the parameterized MERGE on `{id: $id}`, and a SET clause that
     #    assigns `n.name = $name` plus one `n.<key> = $<key>` clause per
     #    extra_props key.
+    cypher = f"MERGE (n:{label}:Entity {{id: $id}}) SET n.name = $name"
+    
     # 3. Build the params dict including id, name, and every extra_props entry.
+    params = {"id": cid, "name": name}
+    
+    if extra_props:
+        for key, value in extra_props.items():
+            cypher += f", n.{key} = ${key}"
+            params[key] = value
+
     # 4. Return (cypher, params).
-    raise NotImplementedError(
-        "merge_entity is not yet implemented — see the Identity Discipline section "
-        "of the Reading and complete the TODO."
-    )
+    return cypher, params
